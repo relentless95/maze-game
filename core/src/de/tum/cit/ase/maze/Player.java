@@ -1,15 +1,15 @@
 package de.tum.cit.ase.maze;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.graphics.Camera;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.math.*;
+import com.badlogic.gdx.math.Intersector.MinimumTranslationVector;
 import com.badlogic.gdx.scenes.scene2d.Actor;
-import com.badlogic.gdx.Input;
-import com.badlogic.gdx.utils.viewport.Viewport;
+
 
 public class Player extends Actor {
     private final float speed;
@@ -23,6 +23,9 @@ public class Player extends Actor {
     private Animation<TextureRegion> currentAnimation;
     private MazeRunnerGame game;
     private int numberOfLives;
+
+    //    private Rectangle body;
+    private Polygon boundaryPolygon;
 
 
     public MazeRunnerGame getGame() {
@@ -50,6 +53,8 @@ public class Player extends Actor {
         this.game = game;
     }
 
+    private Rectangle rectangle;
+
     public Player(Vector2 startPosition) {
         super();
         facingDirection = Direction.DOWN;
@@ -60,8 +65,18 @@ public class Player extends Actor {
         sprite = new Sprite(downIdle);
         speed = 8 * frameWidth; //Our speed will be the number of tiles we can move. In this case, 5 (32 is tile size).
         setBounds(playerX, playerY, frameWidth, frameHeight); //Defining the bounds of the actor class to fit with the sprite representation.
+        if (boundaryPolygon == null) {
+            setBoundaryRectangle();
+        }
+        if (boundaryPolygon == null) {
+            setBoundaryPolygon(8);
+        }
+
         this.setPosition(playerX, playerY);
         numberOfLives = 3;
+//        body = new Rectangle(playerX, playerY, frameWidth, frameHeight);
+        rectangle = new Rectangle(playerX, playerY, 32, 64);
+
     }
 
     public void setCurrentAnimation() {
@@ -89,11 +104,11 @@ public class Player extends Actor {
         included so we save code and display the idle sprite directly
         if our player is not moving
          * */
-        game.getSpriteBatch().draw(currentAnimation.getKeyFrame(sinusInput, true), playerX, playerY, 64, 128);
+        game.getSpriteBatch().draw(currentAnimation.getKeyFrame(sinusInput, true), playerX, playerY, 32, 64);
     }
 
     public void drawCurrentIdleSprite() {
-        game.getSpriteBatch().draw(sprite, playerX, playerY, 64, 128);
+        game.getSpriteBatch().draw(sprite, playerX, playerY, 32, 64);
     }
 
     public void setSprite() {
@@ -117,6 +132,8 @@ public class Player extends Actor {
             default:
                 sprite = new Sprite(downIdle);
         }
+
+
     }
 
     public Sprite getSprite() {
@@ -127,14 +144,15 @@ public class Player extends Actor {
         /*This method checks the state of our player.
          * If it's moving we can display the animations accordingly and move, if not,
          * the player stays in the same place and only displays the static sprite*/
-        return Gdx.input.isKeyPressed(Input.Keys.W) || Gdx.input.isKeyPressed(Input.Keys.A) ||
-                Gdx.input.isKeyPressed(Input.Keys.S) || Gdx.input.isKeyPressed(Input.Keys.D);
+        return Gdx.input.isKeyPressed(Input.Keys.UP) || Gdx.input.isKeyPressed(Input.Keys.LEFT) ||
+                Gdx.input.isKeyPressed(Input.Keys.DOWN) || Gdx.input.isKeyPressed(Input.Keys.RIGHT);
     }
 
     public void update(float delta, float sinusInput) { //All possible interactions and status changes of player.
         super.act(delta);
         if (checkMoving()) {
             move(delta);
+//            body.setPosition(getX(), getY());
             setCurrentAnimation();
             drawCurrentAnimation(sinusInput);
         } else {
@@ -169,14 +187,100 @@ public class Player extends Actor {
         }
     }
 
+    public Rectangle getRectangle() {
+//        System.out.println("got the player rectangle from here");
+        rectangle.setPosition(getX(), getY());
+        return rectangle;
+    }
 
-//    // center the camera on the player
-//    public void alignCamera() {
-//        Camera cam = this.getStage().getCamera();
-//        Viewport v = this.getStage().getViewport();
-//
-//        // center the camera on the player
-//        cam.position.set(this.getX() + this.getOriginX(), this.getY() + this.getOriginY(), 0);
-//
+    // using polygons
+    public void setBoundaryRectangle() {
+//        float w = getWidth();
+//        float h = getHeight();
+        float w = 32;
+        float h = 64;
+        float[] vertices = {0, 0, w, 0, w, h, 0, h};
+        boundaryPolygon = new Polygon(vertices);
+//        System.out.println("getWidth and getHeight in player class: " + getWidth() + getHeight());
+        System.out.println("In player: getX(), getY(), getOriginX(), getOriginY(), getRotation(), getScaleX(), getScaleY() in player class: "
+                + getX() + " " + getY() + " " + getOriginX() + " " + getOriginY() + " " + getRotation() + " "
+                + getScaleX() + " " + getScaleY());
+    }
+
+    public void setBoundaryPolygon(int numSides) {
+//        float w = getWidth();
+//        float h = getHeight();
+        float w = 32;
+        float h = 64;
+
+        float[] vertices = new float[2 * numSides];
+        for (int i = 0; i < numSides; i++) {
+            float angle = i * 6.28f / numSides;
+            //x-coordinate
+            vertices[2 * i] = w / 2 * MathUtils.cos(angle) + w / 2;
+            //y-coordinate
+            vertices[2 * i + 1] = h / 2 * MathUtils.sin(angle) + h / 2;
+        }
+
+        boundaryPolygon = new Polygon(vertices);
+    }
+
+    public Polygon getBoundaryPolygon() {
+        boundaryPolygon.setPosition(getX(), getY());
+        boundaryPolygon.setOrigin(getOriginX(), getOriginY());
+        boundaryPolygon.setRotation(getRotation());
+        boundaryPolygon.setScale(getScaleX(), getScaleY());
+        return boundaryPolygon;
+    }
+
+    //----end of using polygons
+
+
+//    public boolean overlaps(GameObject other) {
+////        System.out.println("overlap method is called");
+//        return this.getRectangle().overlaps(other.getRectangle());
 //    }
+
+    //overlap2.0 using polygons
+    public boolean overlaps(GameObject other) {
+//        System.out.println("overlap method is called");
+        Polygon poly1 = this.getBoundaryPolygon();
+        Polygon poly2 = other.getBoundaryPolygon();
+//            System.out.println("poly1 and poly2 :" + poly1 + " " + poly2);
+
+        // initial test to improve performance
+        if (!poly1.getBoundingRectangle().overlaps(poly2.getBoundingRectangle())) {
+//                System.out.println(false);
+            return false;
+        }
+        System.out.println("the result of Intersector.overlap....: " + Intersector.overlapConvexPolygons(poly1, poly2));
+        return Intersector.overlapConvexPolygons(poly1, poly2);
+    }
+
+
+    // to prevent overlap
+    public Vector2 preventOverlap(GameObject other) {
+        Polygon poly1 = this.getBoundaryPolygon();
+        Polygon poly2 = other.getBoundaryPolygon();
+
+        // initial test to improve performance
+        if (!poly1.getBoundingRectangle().overlaps(poly2.getBoundingRectangle())) {
+            return null;
+        }
+
+        MinimumTranslationVector mtv = new MinimumTranslationVector();
+//        System.out.println("mtv: " + mtv);
+        boolean polygonOverlap = Intersector.overlapConvexPolygons(poly1, poly2, mtv);
+
+        if (!polygonOverlap) {
+            return null;
+        }
+        System.out.println("mtv.normal.x , mtv.depth, mtv.normal.y " + mtv.normal.x + " " + mtv.depth + " " + mtv.normal.y);
+        System.out.println("overlap!!!!");
+        System.out.println("values of x and y: " + getX() + " " + getY());
+        System.out.println("values of x and y after mtv*depth: " + (getX() + mtv.normal.x * mtv.depth) + " " + (getY() + mtv.normal.y * mtv.depth));
+        this.moveBy(mtv.normal.x * mtv.depth, mtv.normal.y * mtv.depth);
+        return mtv.normal;
+
+    }
 }
