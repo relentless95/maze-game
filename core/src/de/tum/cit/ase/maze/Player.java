@@ -279,7 +279,10 @@ public class Player extends Actor {
         System.out.println("overlap!!!!");
         System.out.println("values of x and y: " + getX() + " " + getY());
         System.out.println("values of x and y after mtv*depth: " + (getX() + mtv.normal.x * mtv.depth) + " " + (getY() + mtv.normal.y * mtv.depth));
-        this.moveBy(mtv.normal.x * mtv.depth, mtv.normal.y * mtv.depth);
+//        this.moveBy(mtv.normal.x * mtv.depth, mtv.normal.y * mtv.depth);
+        setPlayerX(this.getX() + mtv.normal.x * mtv.depth );
+        setPlayerY(this.getY() + mtv.normal.y * mtv.depth );
+        System.out.println("setX and setY: " + getX() + " " + getY());
         return mtv.normal;
 
     }
