@@ -7,6 +7,8 @@ import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.scenes.scene2d.Actor;
+import com.badlogic.gdx.scenes.scene2d.Event;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
@@ -29,7 +31,6 @@ public class MenuScreen implements Screen {
 
     private final Stage stage;
 
-
     // file handle
     public static FileHandle selectedFile;
     // preferences a simple way to store small data to the application like settings, small game state saves and so on. works like a hashmap.
@@ -48,8 +49,6 @@ public class MenuScreen implements Screen {
         stage = new Stage(viewport, game.getSpriteBatch()); // Create a stage for UI elements
 
 // for the file chooser
-//        final Label fileLabel = new Label("Open a map first", game.getSkin());
-
 
         Table table = new Table(); // Create a table for layout
         table.setFillParent(true); // Make the table fill the stage
@@ -58,8 +57,25 @@ public class MenuScreen implements Screen {
         // Add a label as a title
         table.add(new Label("Artemaze", game.getSkin(), "title")).padBottom(80).row();
 
+
+        //quit
+        TextButton quitButton = new TextButton("Quit", game.getSkin());
+//        quitButton.setPosition(500, 150);
+//        uiStage.addActor(quitButton);
+
+        quitButton.addListener(
+                (Event e) -> {
+                    if (!(e instanceof InputEvent) || !((InputEvent) e).getType().equals(InputEvent.Type.touchDown)) {
+                        return false;
+                    }
+
+
+                    Gdx.app.exit();
+                    return false;
+                });
+
         // Create and add a button to go to the game screen
-        TextButton goToGameButton = new TextButton("Go To Game", game.getSkin());
+        TextButton goToGameButton = new TextButton("Start new game", game.getSkin());
         table.add(goToGameButton).width(300).row();
         goToGameButton.addListener(new ChangeListener() {
             @Override
@@ -67,63 +83,60 @@ public class MenuScreen implements Screen {
                 game.goToGame(); // Change to the game screen when button is pressed
             }
         });
+        if (game.getGameScreen() != null) {
+
+            TextButton Continue = new TextButton("Continue", game.getSkin());
+            table.add(Continue).width(300).row();
+            Continue.addListener(new ChangeListener() {
+                @Override
+                public void changed(ChangeEvent event, Actor actor) {
+                    game.goToGame(); // Change to the game screen when button is pressed
+                }
+            });
+        }
         // create a new button to load the map;
         TextButton chooseMapFile = new TextButton("Choose Map file", game.getSkin());
         table.add().padBottom(30).row(); // to add space between the two buttons
         table.add(chooseMapFile).width(300).row();
 
+        table.add(quitButton).width(300);
+
         chooseMapFile.addListener(
                 new ChangeListener() {
                     @Override
                     public void changed(ChangeEvent event, Actor actor) {
-//                        game.goToGame();
-//                        game.getFileChooser()
-
 
                         NativeFileChooserConfiguration conf = mapFileChooserConfiguration();
                         conf.title = "Select map file";
 
                         game.getFileChooser().chooseFile(conf, new NativeFileChooserCallback() {
                                     @Override
-                                    public void onFileChosen(FileHandle file) {
+                                    public void onFileChosen(FileHandle file) throws NullPointerException{
                                         selectedFile = file;
-                                        System.out.println("Selected file is: " + selectedFile);
-
                                         if (file == null) {
-//                                            saveFileButton.setDisabled(true);
-//                                            fileLabel.setText("Selected map file: None");
+                                            throw new NullPointerException();
                                         } else {
                                             prefs.putString("lastMap", file.parent().file().getAbsolutePath());
-//                                            fileLabel.setText("selected map file " + file.path());
-//                                            saveFileButton.setDisabled(false);
                                         }
                                     }
 
                                     @Override
                                     public void onCancellation() {
                                         selectedFile = null;
-//                                        fileLabel.setText("selected map file: None");
-
                                     }
 
                                     @Override
                                     public void onError(Exception e) {
                                         selectedFile = null;
                                         e.printStackTrace();
-//                                        fileLabel.setText(e.getLocalizedMessage());
                                     }
                                 }
                         );
                     }
                 });
 
-
         //  implementing the file choosing
         prefs = Gdx.app.getPreferences("MazeRunnerGame");
-//        final Label fileLabel = new Label("Open a map first", game.getSkin());
-//        fileLabel.setAlignment(Align.center);
-
-
     }
 
     @Override
@@ -187,7 +200,6 @@ public class MenuScreen implements Screen {
                 return false;
             }
         };
-//        conf.mimeFilter = "text/plain";
         conf.mimeFilter = "text/x-java-properties";
 
         return conf;
@@ -195,6 +207,5 @@ public class MenuScreen implements Screen {
 
     public static FileHandle getSelectedFile() {
         return selectedFile;
-//        String file = FileHandle.readString();
     }
 }

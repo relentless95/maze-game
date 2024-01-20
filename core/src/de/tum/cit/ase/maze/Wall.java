@@ -10,7 +10,7 @@ public class Wall extends GameObject{
     public Wall(TextureRegion textureRegion, float x, float y, float width, float height){
 //        super(textureRegion, x, y, bounds);
         super(textureRegion, x, y, new Rectangle(x,y, width, height), new Rectangle(x,y, width, height));
-        setBoundaryPolygon(8);
+        setBoundaryPolygon(10);
 
     }
 }

@@ -75,6 +75,7 @@ public class GameObject extends Actor {
         float[] vertices = new float[2 * numSides];
         for (int i = 0; i < numSides; i++) {
             float angle = i * 6.28f / numSides;
+//            float angle = (i + 0.5f)*360f/numSides;
             //x-coordinate
             vertices[2 * i] = w / 2 * MathUtils.cos(angle) + w / 2;
             //y-coordinate

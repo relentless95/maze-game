@@ -17,9 +17,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
-//import static de.tum.cit.ase.maze.MazeRunnerGame.getObjectAnimation;
-//import static de.tum.cit.ase.maze.MazeRunnerGame.getTrapAnimation;
-
 public class MapFileReader {
     private int maxX;
     private int maxY;
@@ -32,7 +29,13 @@ public class MapFileReader {
     private GameObject gameObject;
     private ArrayList<Wall> walls;
     private ArrayList<Obstacle> obstacles;
+    private ArrayList<Chest> chests;
     private ArrayList<Trap> traps;
+    private ArrayList<Enemy> enemies;
+
+    //    private ArrayList<EntryPoint> entryPoint;
+    private EntryPoint entryPoint;
+    private ArrayList<Exit> exits;
 
     private MazeRunnerGame game;
 
@@ -45,18 +48,25 @@ public class MapFileReader {
         this.walls = new ArrayList<>();
         this.obstacles = new ArrayList<>();
         this.traps = new ArrayList<>();
+        this.enemies = new ArrayList<>();
+        this.chests = new ArrayList<>();
+//        this.entryPoint  = new EntryPoint();
+        this.exits = new ArrayList<>();
+
         this.game = game;
     }
 
-    public  Properties readMapProperties() {
+    public static Properties readMapProperties() {
+
         System.out.println("Working Directory = " + System.getProperty("user.dir"));
         Properties properties = new Properties();
-
 
         try {
             FileInputStream input;
             if (MenuScreen.getSelectedFile() == null) {
-                String filePath = "maps" + File.separator + "level-1.properties";
+                System.out.println(System.getProperty("user.dir"));
+                System.out.println(System.getProperty("user.dir") + File.separator  + File.separator + "maps" + File.separator + "level-1.properties");
+                File filePath = new File(System.getProperty("user.dir") + File.separator + "maps" + File.separator + "level-1.properties");
                 input = new FileInputStream(filePath);
             } else {
                 input = new FileInputStream(MenuScreen.getSelectedFile().toString());
@@ -77,6 +87,11 @@ public class MapFileReader {
         Wall wall;
         Obstacle obstacle;
         Trap trap;
+        Enemy enemy;
+        Chest chest;
+//        EntryPoint entryPoint;
+        Exit exit;
+
 
         // calling the method to read the property file from the MapFileReader class
         Properties properties = readMapProperties();
@@ -95,16 +110,40 @@ public class MapFileReader {
             // to load the tiles
             tiles = new Texture(Gdx.files.internal("basictiles.png")); // load the image
 
+            tiles.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+
             // to load things
             Texture things = new Texture(Gdx.files.internal("things.png"));
+
+            // to load mobs
+            Texture mobs = new Texture(Gdx.files.internal("mobs.png"));
+            System.out.println("mobs: " + mobs);
 
             // split the things
             TextureRegion[][] splitThings = TextureRegion.split(things, 16, 16);
             // to select the obstacle Image
             TextureRegion obstacleImage = splitThings[4][0];
 
+            // to select the chest image
+            TextureRegion chestImage = splitThings[0][6];
+            TextureRegion chestOpenImage = splitThings[4][8];
+
             // to select the trap image
             TextureRegion trapImage = splitThings[4][6];
+
+            //to select entry image
+//            TextureRegion entryPointImage = splitThings[0][0];
+
+            TextureRegion entryPointImage = splitThings[3][2];
+
+            //toSelect exit Image
+            TextureRegion exitImage = splitThings[0][3];
+
+            // spit mobs
+            TextureRegion[][] splitMobs = TextureRegion.split(mobs, 16, 16);
+
+            //to select the enemy image;
+            TextureRegion mobImage = splitMobs[4][6];
 
 
             // to create the 2d array containing our sprite images
@@ -115,7 +154,6 @@ public class MapFileReader {
             TextureRegion[][] splitTiles = TextureRegion.split(tiles, 16, 16);
             map = new TiledMap(); // creates a new instance of a tiled map class
             MapLayers layers = map.getLayers(); //
-
             for (int l = 0; l < 1; l++) { // we don't need three layers
                 // + 1 is used to account for the fact that the tile indices starts from 0;
                 TiledMapTileLayer layer = new TiledMapTileLayer(maxX + 1, maxY + 1, 16, 16);
@@ -127,7 +165,7 @@ public class MapFileReader {
                 Map<Integer, TextureRegion> m = new HashMap<Integer, TextureRegion>();
                 m.put(0, splitTiles[0][2]); // Wall
                 m.put(1, splitTiles[6][0]); // Entry point
-                m.put(2, splitTiles[6][1]); // Exit
+                m.put(2, splitTiles[6][3]); // Exit
                 m.put(3, splitTiles[1][1]); // Trap
                 m.put(4, splitTiles[7][4]); // Enemy
                 m.put(5, splitTiles[4][4]); // Key
@@ -148,20 +186,16 @@ public class MapFileReader {
                             entranceY = y;
                             System.out.println("entranceX: " + entranceX + "entranceY: " + entranceY);
                         }
-
-
                         TextureRegion textureRegion = m.get(prop);
-//                        Rectangle bounds = new Rectangle(x * 16, y * 16, 32, 32);
-//
+//                        Rectangle bounds = new Rectangle(x * 16, y * 16, 16, 16);
+
                         // for collision detection
 //                        GameObject gameObject;
-
                         float width = 16 * 5; // controls the width and height of the image being displayed
                         float height = 16 * 5;
 
                         int p;
                         int q;
-
 
                         switch (prop) {
                             case 0:
@@ -170,10 +204,23 @@ public class MapFileReader {
                                 wall = new Wall(textureRegion, x * 16 * 5, y * 16 * 5, width, height);
                                 walls.add(wall);
                                 break;
-//                            case 1:
-//                                break;
-//                            case 2:
-//                                break;
+                            case 1:
+                                p = x;
+                                q = y;
+                                Animation<TextureRegion> entrypointAnimation = game.getEntryPointAnimation();
+                                entryPoint = new EntryPoint(entryPointImage, p * 16 * 5, q * 16 * 5, width, height, entrypointAnimation);
+//                                entryPoint;
+//                                che.add(chest);
+                                System.out.println("the length of the entryPoint is: " + entryPoint);
+                                break;
+                            case 2:
+                                p = x;
+                                q = y;
+                                Animation<TextureRegion> exitAnimation = game.getExitAnimation();
+                                exit = new Exit(exitImage, p * 16 * 5, q * 16 * 5, width, height, exitAnimation);
+                                exits.add(exit);
+                                System.out.println("the length of the exits is: " + exits.size());
+                                break;
                             case 3:
                                 p = x;
                                 q = y;
@@ -185,16 +232,35 @@ public class MapFileReader {
                             case 4:
                                 p = x;
                                 q = y;
-                                Animation<TextureRegion> obstacleAnimation = game.getObjectAnimation();
+//                                Animation<TextureRegion> obstacleAnimation = game.getObjectAnimation();
 //                                System.out.println("count of object animations : " + obstacleAnimation);
 //                                TextureRegion obstacleSprite = new TextureRegion(new Texture(Gdx.files.internal("obstacle_sprite.png")));
 //                                obstacle = new Obstacle(obstacleSprite, x * 16 * 5, y * 16 * 5, width, height, obstacleAnimation);
-                                obstacle = new Obstacle(obstacleImage, p * 16 * 5, q * 16 * 5, width, height, obstacleAnimation);
-                                obstacles.add(obstacle);
+
+//                                obstacle = new Obstacle(obstacleImage, p * 16 * 5, q * 16 * 5, width, height, obstacleAnimation);
+//                                obstacles.add(obstacle);
 //                                System.out.println("the length of the obstacles is: " + obstacles.size());
+
+                                Animation<TextureRegion> enemyAnimation = game.getEnemyAnimation();
+
+
+                                enemy = new Enemy(mobImage, p * 16 * 5, q * 16 * 5, width, height, enemyAnimation);
+
+//                                wall = new Wall(mobImage, x * 16 * 5, y * 16 * 5, width, height);
+
+                                enemies.add(enemy);
+                                System.out.println("the length of the enemies is: " + enemies.size());
+
+
                                 break;
-//                            case 5:
-//                                break;
+                            case 5:
+                                p = x;
+                                q = y;
+                                Animation<TextureRegion> chestAnimation = game.getChestAnimation();
+                                chest = new Chest(chestImage, p * 16 * 5, q * 16 * 5, width, height, chestAnimation);
+                                chests.add(chest);
+                                System.out.println("the length of the chest is: " + chests.size());
+                                break;
 //                            case 6:
 //                                break;
 
@@ -203,33 +269,60 @@ public class MapFileReader {
                         }
 //                        GameObject wall = new GameObject(textureRegion, bounds);
 
-                        if (prop == 4) {
-                            prop = 6;
-                        } else if (prop == 0) {
+                        if (prop == 0) {
                             prop = 6;
 
+                        } else if (prop == 1) {
+                            prop = 6;
+                        } else if (prop == 2) {
+                            prop = 6;
                         } else if (prop == 3) {
                             prop = 6;
-
+                        } else if (prop == 4) {
+                            prop = 6;
+                        } else if (prop == 5) {
+                            prop = 6;
                         }
 
                         TiledMapTileLayer.Cell cell = new TiledMapTileLayer.Cell();
 
-//                        cell.setTile(new StaticTiledMapTile(wall.getTextureRegion()));
+                        //                        cell.setTile(new StaticTiledMapTile(wall.getTextureRegion()));
                         cell.setTile(new StaticTiledMapTile(m.get(prop)));
                         layer.setCell(x, y, cell);
-
-
+                        fixBleeding(textureRegion);
                     }
-                }
 
+                }
                 layers.add(layer);
+                fixBleeding(splitTiles);
 
                 System.out.println("tillelayer.getWidth: " + layer.getWidth());
                 System.out.println("tillelayer.getHeight: " + layer.getHeight());
             }
         }
     }
+
+    public static void fixBleeding(TextureRegion[][] region) {
+        for (TextureRegion[] array : region) {
+            for (TextureRegion texture : array) {
+                fixBleeding(texture);
+            }
+        }
+    }
+
+    public static void fixBleeding(TextureRegion region) {
+        float fix = 0.01f;
+        float x = region.getRegionX();
+        float y = region.getRegionY();
+        float width = region.getRegionWidth();
+        float height = region.getRegionHeight();
+        float invTexWidth = 1f / region.getTexture().getWidth();
+        float invTexHeight = 1f / region.getTexture().getHeight();
+        region.setRegion((x + fix) * invTexWidth, (y + fix) * invTexHeight, (x + width - fix) * invTexWidth, (y + height - fix) * invTexHeight); // Trims
+    }
+
+
+    // some of the setters and getters are not used here....remove them maybe
 
     public int getMaxX() {
         return maxX;
@@ -267,6 +360,7 @@ public class MapFileReader {
         return map;
     }
 
+
     public void setMap(TiledMap map) {
         this.map = map;
     }
@@ -296,6 +390,31 @@ public class MapFileReader {
         this.obstacles = obstacles;
     }
 
+    public ArrayList<Chest> getChests() {
+        return chests;
+    }
+
+    public void setChests(ArrayList<Chest> chests) {
+        this.chests = chests;
+    }
+
+
+    public EntryPoint getEntryPoint() {
+        return entryPoint;
+    }
+
+    public void setEntryPoint(EntryPoint entryPoint) {
+        this.entryPoint = entryPoint;
+    }
+
+    public ArrayList<Exit> getExits() {
+        return exits;
+    }
+
+    public void setExits(ArrayList<Exit> exits) {
+        this.exits = exits;
+    }
+
     public ArrayList<Trap> getTraps() {
         return traps;
     }
@@ -303,4 +422,13 @@ public class MapFileReader {
     public void setTraps(ArrayList<Trap> traps) {
         this.traps = traps;
     }
+
+    public ArrayList<Enemy> getEnemies() {
+        return enemies;
+    }
+
+    public void setEnemies(ArrayList<Enemy> enemies) {
+        this.enemies = enemies;
+    }
+
 }

@@ -11,6 +11,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.utils.Array;
 import games.spooky.gdx.nativefilechooser.NativeFileChooser;
 
+
 /**
  * The MazeRunnerGame class represents the core of the Maze Runner game.
  * It manages the screens and global resources like SpriteBatch and Skin.
@@ -26,18 +27,19 @@ public class MazeRunnerGame extends Game {
     // UI Skin
     private Skin skin;
 
-    // Character animation downwards
-    private Animation<TextureRegion> characterDownAnimation;
-    private Animation<TextureRegion> characterUpAnimation;
-    private Animation<TextureRegion> characterLeftAnimation;
-    private Animation<TextureRegion> characterRightAnimation;
 
-    private  Animation<TextureRegion> objectAnimation;
-    private  Animation<TextureRegion> trapAnimation;
 
+    private Animation<TextureRegion> objectAnimation;
+    private Animation<TextureRegion> trapAnimation;
+
+    private Animation<TextureRegion> enemyAnimation;
+    private Animation<TextureRegion> chestAnimation;
+    private Animation<TextureRegion> entryPointAnimation;
+    private Animation<TextureRegion> exitAnimation;
 
     // file chooser
-    final NativeFileChooser fileChooser;
+    private final  NativeFileChooser fileChooser;
+
 
 
     /**
@@ -60,11 +62,15 @@ public class MazeRunnerGame extends Game {
     public void create() {
         spriteBatch = new SpriteBatch(); // Create SpriteBatch
         skin = new Skin(Gdx.files.internal("craft/craftacular-ui.json")); // Load UI skin
-        this.loadCharacterAnimation(); // Load character animation
-//        this.loadObjectAnimation(4,1,"things.png", 3); // to load the object animation
+        //        this.loadObjectAnimation(4,1,"things.png", 3); // to load the object animation
 //        this.loadObjectAnimation(0,3,4,1,"things.png", 3); // to load the object animation
-        this.loadObjectAnimation(0,3,4,1,"things.png", 3, "object"); // to load the object animation
-        this.loadObjectAnimation(7,9,4,1,"things.png", 3, "trap"); // to load the object animation for spikes
+        this.loadObjectAnimation(0, 3, 4, 1, "things.png", 3, "object"); // to load the object animation
+        this.loadObjectAnimation(6, 9, 4, 1, "things.png", 3, "trap"); // to load the object animation for spikes
+
+        this.loadObjectAnimation(6, 9, 4, 1, "mobs.png", 3, "enemy");
+        this.loadSpecialAnimation(6, 8, 0, 4, "things.png", "chest");
+        this.loadSpecialAnimation(0, 2, 0, 4, "things.png", "entryPoint");
+        this.loadSpecialAnimation(3, 5, 0, 4, "things.png", "exit");
 
 
         // Play some background music
@@ -72,6 +78,10 @@ public class MazeRunnerGame extends Game {
         Music backgroundMusic = Gdx.audio.newMusic(Gdx.files.internal("background.mp3"));
         backgroundMusic.setLooping(true);
 //        backgroundMusic.play();
+
+
+
+
 
 
         goToMenu(); // Navigate to the menu screen
@@ -82,6 +92,22 @@ public class MazeRunnerGame extends Game {
      */
     public void goToMenu() {
         this.setScreen(new MenuScreen(this)); // Set the current screen to MenuScreen
+        /*if (gameScreen != null) {
+            gameScreen.dispose(); // Dispose the game screen if it exists
+            gameScreen = null;
+        }*/
+    }
+
+    public void goToGameOverScreen() {
+        this.setScreen(new GameOverScreen(this)); // Set the current screen to MenuScreen
+        if (gameScreen != null) {
+            gameScreen.dispose(); // Dispose the game screen if it exists
+            gameScreen = null;
+        }
+    }
+
+    public void goToPauseMenu() {
+        this.setScreen(new PauseScreen(this)); // Set the current screen to MenuScreen
         if (gameScreen != null) {
             gameScreen.dispose(); // Dispose the game screen if it exists
             gameScreen = null;
@@ -99,42 +125,11 @@ public class MazeRunnerGame extends Game {
         }
     }
 
-    /**
-     * Loads the character animation from the character.png file.
-     */
-    private void loadCharacterAnimation() {
-        Texture walkSheet = new Texture(Gdx.files.internal("character.png"));
-        int frameWidth = 16;
-        int frameHeight = 32;
-        int animationFrames = 4;
 
 
-        // libGDX internal Array instead of ArrayList because of performance
-        Array<TextureRegion> walkFrames = new Array<>(TextureRegion.class);
-        // Add all frames to the animation
-        for (int col = 0; col < animationFrames; col++) {
-            walkFrames.add(new TextureRegion(walkSheet, col * frameWidth, 0, frameWidth, frameHeight));
-        }
-        characterDownAnimation = new Animation<>(0.1f, walkFrames);
-        walkFrames.clear();
-        for (int col = 0; col < animationFrames; col++) {
-            walkFrames.add(new TextureRegion(walkSheet, col * frameWidth, frameHeight, frameWidth, frameHeight));
-        }
-        characterRightAnimation = new Animation<>(0.1f, walkFrames);
-        walkFrames.clear();
-        for (int col = 0; col < animationFrames; col++) {
-            walkFrames.add(new TextureRegion(walkSheet, col * frameWidth, 2 * frameHeight, frameWidth, frameHeight));
-        }
-        characterUpAnimation = new Animation<>(0.1f, walkFrames);
-        walkFrames.clear();
-        for (int col = 0; col < animationFrames; col++) {
-            walkFrames.add(new TextureRegion(walkSheet, col * frameWidth, 3 * frameHeight, frameWidth, frameHeight));
-        }
-        characterLeftAnimation = new Animation<>(0.1f, walkFrames);
-    }
 
-
-    private void loadObjectAnimation(int startCol, int endCol,int spriteRow, int spriteCol, String imageNameInQuotes, int frames, String type) {
+    // spriteCol and animation frames not necessary here... probabaly
+    private void loadObjectAnimation(int startCol, int endCol, int spriteRow, int spriteCol, String imageNameInQuotes, int frames, String type) {
         spriteCol = (spriteCol != 0) ? spriteCol : 1;
         spriteRow = (spriteRow != 0) ? spriteRow : 1;
         Texture thingsSheet = new Texture(Gdx.files.internal(imageNameInQuotes));
@@ -149,60 +144,86 @@ public class MazeRunnerGame extends Game {
         // Add all frames to the animation
 //        for (int col = 0; col < animationFrames; col++) {
         for (int col = startCol; col < endCol; col++) {
-
 //            objectFrames.add(new TextureRegion(thingsSheet, col * frameWidth, 4*frameHeight, frameWidth, frameHeight));
-            objectFrames.add(new TextureRegion(thingsSheet, col * frameWidth , spriteRow * frameHeight, frameWidth , frameHeight));
+            objectFrames.add(new TextureRegion(thingsSheet, col * frameWidth, spriteRow * frameHeight, frameWidth, frameHeight));
         }
-        if(type.equals("object")) {
+        if (type.equals("object")) {
             objectAnimation = new Animation<>(0.1f, objectFrames);
 //            objectFrames.clear();
 
         }
 
-        if(type.equals("trap")){
-            trapAnimation = new Animation<>(1f, objectFrames);
+        if (type.equals("trap")) {
+            trapAnimation = new Animation<>(2f, objectFrames);
 //            objectFrames.clear();
+        }
+
+        if (type.equals("enemy")) {
+            enemyAnimation = new Animation<>(0.199f, objectFrames);
         }
         objectFrames.clear();
 
 
     }
 
-
-
-    private void loadSpecialAnimation(int startCol, int endCol,int spriteRow, int spriteCol, String imageNameInQuotes, int frames, String type) {
-        spriteCol = (spriteCol != 0) ? spriteCol : 1;
-        spriteRow = (spriteRow != 0) ? spriteRow : 1;
-        Texture thingsSheet = new Texture(Gdx.files.internal(imageNameInQuotes));
+    private void loadSpecialAnimation(int startCol, int endCol, int startRow, int endRow,
+                                      String imageNameInQuotes, String type) {
+//        spriteCol = (spriteCol != 0) ? spriteCol : 1;
+//        spriteRow = (spriteRow != 0) ? spriteRow : 1;
         int frameWidth = 16;
         int frameHeight = 16;
-//        int animationFrames = 3;
-        int animationFrames = frames;
+
+        Texture spriteSheet = new Texture(Gdx.files.internal(imageNameInQuotes));
+        TextureRegion[][] regions = TextureRegion.split(spriteSheet, frameWidth, frameHeight);
+
 
         // libGDX internal Array instead of ArrayList because of performance
-        Array<TextureRegion> objectFrames = new Array<>(TextureRegion.class);
+        Array<TextureRegion> animationFrames = new Array<TextureRegion>();
+
+        Array<TextureRegion> reversedAnimationFrames = new Array<TextureRegion>();
+
 
         // Add all frames to the animation
 //        for (int col = 0; col < animationFrames; col++) {
-        for (int col = startCol; col < endCol; col++) {
+        for (int row = startRow; row < endRow; row++) {
+            for (int col = startCol; col <= endCol; col++) {
 
-//            objectFrames.add(new TextureRegion(thingsSheet, col * frameWidth, 4*frameHeight, frameWidth, frameHeight));
-            objectFrames.add(new TextureRegion(thingsSheet, col * frameWidth , spriteRow * frameHeight, frameWidth , frameHeight));
-        }
-        if(type.equals("object")) {
-            objectAnimation = new Animation<>(0.1f, objectFrames);
-            objectFrames.clear();
-
+                animationFrames.add(regions[row][col]);
+            }
         }
 
-        if(type.equals("trap")){
-            trapAnimation = new Animation<>(1f, objectFrames);
-            objectFrames.clear();
+        for (int i = animationFrames.size - 1; i >= 0; i--) {
+            reversedAnimationFrames.add(animationFrames.get(i));
         }
-        objectFrames.clear();
+
+        System.out.println("animationFrames.size: " + animationFrames.size);
+        System.out.println("reversedAnimationFrames.size: " + reversedAnimationFrames.size);
+
+
+
+        Animation<TextureRegion> anim = new Animation<TextureRegion>(2f, animationFrames);
+        Animation<TextureRegion> animReversed = new Animation<>(1.5f, reversedAnimationFrames);
+
+
+        if (type.equals("chest")) {
+            chestAnimation = anim;
+        }
+
+        if (type.equals("entryPoint")) {
+            entryPointAnimation = animReversed;
+
+        }
+
+        if (type.equals("exit")) {
+            exitAnimation = anim;
+        }
+
+        animationFrames.clear();
+        reversedAnimationFrames.clear();
 
 
     }
+
 
     /**
      * Cleans up resources when the game is disposed.
@@ -220,35 +241,48 @@ public class MazeRunnerGame extends Game {
         return skin;
     }
 
-    public Animation<TextureRegion> getCharacterDownAnimation() {
-        return characterDownAnimation;
-    }
 
-    public Animation<TextureRegion> getCharacterUpAnimation() {
-        return characterUpAnimation;
-    }
 
-    public Animation<TextureRegion> getCharacterLeftAnimation() {
-        return characterLeftAnimation;
-    }
-
-    public Animation<TextureRegion> getCharacterRightAnimation() {
-        return characterRightAnimation;
-    }
-
-    public  Animation<TextureRegion> getObjectAnimation() {
+    public Animation<TextureRegion> getObjectAnimation() {
         return objectAnimation;
     }
 
-    public  Animation<TextureRegion> getTrapAnimation() {
+    public Animation<TextureRegion> getChestAnimation() {
+        return chestAnimation;
+    }
+
+
+    public Animation<TextureRegion> getEntryPointAnimation() {
+        return entryPointAnimation;
+    }
+
+    public Animation<TextureRegion> getExitAnimation() {
+        return exitAnimation;
+    }
+
+    public Animation<TextureRegion> getTrapAnimation() {
         return trapAnimation;
     }
+
+
+    public Animation<TextureRegion> getEnemyAnimation() {
+        return enemyAnimation;
+    }
+
+    public void setEnemyAnimation(Animation<TextureRegion> enemyAnimation) {
+        this.enemyAnimation = enemyAnimation;
+    }
+
 
     public SpriteBatch getSpriteBatch() {
         return spriteBatch;
     }
 
-    public NativeFileChooser getFileChooser() {
+    public  NativeFileChooser getFileChooser() {
         return fileChooser;
+    }
+
+    public GameScreen getGameScreen() {
+        return gameScreen;
     }
 }

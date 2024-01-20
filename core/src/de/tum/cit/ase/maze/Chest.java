@@ -1,23 +1,24 @@
 package de.tum.cit.ase.maze;
 
+
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Rectangle;
 
-public class Exit extends GameObject {
 
+public class Chest extends GameObject {
 
-    private Animation<TextureRegion> exitAnimation;
+    private Animation<TextureRegion> chestAnimation;
     private float stateTime; // Used to track the elapsed time for animation
-    private boolean exitOpen;
+    private boolean chestOpen;
 
-
-    public Exit(TextureRegion textureRegion, float x, float y, float width, float height, Animation<TextureRegion> exitAnimation) {
+    public Chest(TextureRegion textureRegion, float x, float y, float width, float height, Animation<TextureRegion> chestAnimation) {
         super(textureRegion, x, y, new Rectangle(x, y, width, height), new Rectangle(x, y, width, height));
-        this.exitAnimation = exitAnimation;
+        this.chestAnimation = chestAnimation;
         this.stateTime = 0;
-        this.exitOpen = false;
+        this.chestOpen = false;
         setBoundaryPolygon(10);
+
     }
 
     public void update(float delta) {
@@ -25,17 +26,15 @@ public class Exit extends GameObject {
     }
 
     public TextureRegion getCurrentFrame() {
-        return exitAnimation.getKeyFrame(stateTime, true);
+        return chestAnimation.getKeyFrame(stateTime, true);
     }
 
-    public boolean isExitOpen() {
-        return exitOpen;
+    public boolean isChestOpen() {
+        return chestOpen;
     }
 
-    public void setExitOpen(boolean exitOpen) {
-        this.exitOpen = exitOpen;
+    public void setChestOpen(boolean chestOpen) {
+        this.chestOpen = chestOpen;
     }
 }
-
-
 

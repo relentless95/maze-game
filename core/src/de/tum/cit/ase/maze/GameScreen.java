@@ -30,17 +30,15 @@ public class GameScreen implements Screen {
     private float sinusInput = 0f;
     private TiledMapRenderer renderer;
     private Viewport viewport;
+    private HUD hud;
+    private static float unitScale = 5f;
+    private MapFileReader mapCreator;
 
-    MapFileReader mapCreator;
+    // the maxX and maxY might not be necessary
     public int maxX;
     public int maxY;
 
-    float prevx;
-    float prevy;
-
     private ShapeRenderer shapeRenderer;
-
-//    private MazeRunnerGame game;
 
 
     /**
@@ -50,143 +48,248 @@ public class GameScreen implements Screen {
      */
     public GameScreen(MazeRunnerGame game) {
         // Create and configure the camera for the game view
+        this.game = game;
+
+        mapCreator = new MapFileReader(game);
+        mapCreator.loadMap();
+
+        this.player = new Player(new Vector2(mapCreator.getEntranceX() * 5 * 16, mapCreator.getEntranceY() * 5 * 16));
+        this.player.setGame(game);
+        // Create and configure the camera for the game view
         camera = new OrthographicCamera();
         camera.setToOrtho(false);
         camera.zoom = 0.75f;
+
+        // Initialize camera position
+        initializeCameraPosition();
+
         // Get the font from the game's skin
         font = game.getSkin().getFont("font");
+
         viewport = new ScreenViewport(camera);//
         viewport.apply(true);
-        mapCreator = new MapFileReader(game);
-        mapCreator.loadMap();
-//        this.game = game;
-        /**
-         * The unit scale tells the renderer how many pixels map to a single world unit. In the above case 16 pixels
-         * would equal one unit. If you want a pixel to map to a unit, unitScale would have to be one, and so on.**/
-        this.game = game;
-        this.player = new Player(new Vector2(mapCreator.getEntranceX() * 5 * 16, mapCreator.getEntranceY() * 5 * 16));
+        viewport.setWorldSize(mapCreator.getMaxX() * 16 * 5, mapCreator.getMaxY() * 16 * 5);
 
-        this.player.setGame(game);
-        float unitScale = 5f;
+        hud = new HUD();
+        hud.setGame(game);
+        hud.setScreen(this);
+
+        // Create the renderer with the map and unit scale
         renderer = new OrthogonalTiledMapRenderer(mapCreator.getMap(), unitScale);
-//      renderer = new OrthogonalTiledMapRenderer(map);
+
+        // Set the view and projection matrix for the renderer
+        renderer.setView(camera);
 
         shapeRenderer = new ShapeRenderer();
+    }
+
+    private void initializeCameraPosition() {
+        float initialX = mapCreator.getEntranceX() * 5 * 16;
+        float initialY = mapCreator.getEntranceY() * 5 * 16;
+
+        // Set camera position
+        camera.position.set(initialX, initialY, 0);
+        camera.update();
     }
 
 
     // Screen interface methods with necessary functionality
     @Override
     public void render(float delta) {
+        sinusInput += delta;
+        // Begin sprite batch and draw game elements
+        game.getSpriteBatch().setProjectionMatrix(camera.combined);
+        game.getSpriteBatch().begin();
+
+//        player.update(delta, sinusInput);
+
+        handleInput();
+
+        updateCamera();
+
+        renderer.setView(camera);
+
         // Check for escape key press to go back to the menu
-        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            game.goToMenu();
-        }
         ScreenUtils.clear(0, 0, 0, 1); // Clear the screen
         camera.update(); // Update the camera
-        renderer.setView(camera);
         renderer.render();
 
 
-        game.getSpriteBatch().begin();
+        //draw walls
 
-//        for(Wall wall : mapCreator.getWalls()){
-//            player.preventOverlap(wall);
-//        }
 
         for (Wall wall : mapCreator.getWalls()) {
-//            System.out.println("player rectangle: " +  player.getRectangle());
-//            System.out.println("wall rectangle: " +    wall.getRectangle());
-
             player.preventOverlap(wall);
-
-//            System.out.println(wall.getRec());
 
             // for collision detection
             if (player.overlaps(wall)) {
                 System.out.println("called");
                 System.out.println("overlapping");
-//                System.out.println("the values of prevx and prey: " + prevx + prevy);
-//                player.setPlayerX(prevx);
-//                player.setPlayerY(prevy);
+
             } else {
 
             }
 
             float wallWidth = wall.getBounds().width; // Adjust yourScalingFactor
             float wallHeight = wall.getBounds().height; // Adjust yourScalingFactor
-//            System.out.println("wall height and width from bounds: " + wallHeight +  wallWidth);
-//            System.out.println("wall.getbounds: " + wall.getBounds()) ;
-
             game.getSpriteBatch().draw(wall.getTextureRegion(), wall.getBounds().x, wall.getBounds().y, wallWidth, wallHeight);
-
-
         }
 
 
-        for (Obstacle obstacle : mapCreator.getObstacles()) {
+        //draw enemies
+        for (Enemy enemy : mapCreator.getEnemies()) {
 
-            obstacle.update(delta);
+//            enemy.update(delta);
 
-            float obstacleWidth = obstacle.getBounds().width; // Adjust yourScalingFactor
-            float obstacleHeight = obstacle.getBounds().height; // Adjust yourScalingFactor
-
-//            // Get the current frame from the obstacle's animation
-            TextureRegion currentFrame = obstacle.getCurrentFrame();
-//            System.out.println("the currentFrame for the game: " + currentFrame);
+            float enemyWidth = enemy.getBounds().width; // Adjust yourScalingFactor
+            float enemyHeight = enemy.getBounds().height; // Adjust yourScalingFactor
 
 
-//            game.getSpriteBatch().draw(obstacle.getTextureRegion(), obstacle.getBounds().x , obstacle.getBounds().y, obstacleWidth , obstacleHeight);
-            game.getSpriteBatch().draw(game.getObjectAnimation().getKeyFrame(sinusInput, true), obstacle.getBounds().x, obstacle.getBounds().y, obstacleWidth, obstacleHeight);
+            game.getSpriteBatch().draw(game.getEnemyAnimation().getKeyFrame(sinusInput, true), enemy.getBounds().x, enemy.getBounds().y, enemyWidth, enemyHeight);
         }
 
         // the traps
         for (Trap trap : mapCreator.getTraps()) {
-
             trap.update(delta);
-
+            if (player.overlaps(trap) && trap.areSpikesFullyExtended()) {
+                System.out.println("player has collided");
+//                System.out.println(trap.canDamagePlayer() + " cooldown is: " + trap.getCooldown());
+                player.receiveDamage();
+//
+//                if (trap.canDamagePlayer()) {
+//                    //            if (player.overlaps(trap)) {
+//                    //                System.out.println("player.overlaps(trap) && trap.areSpikesFullyExtended(): "
+//                    //                        + "true");
+//                    //                System.out.println("player overlaps with the trap: : " + player.overlaps(trap));
+//                    System.out.println("player has taken damage:  " + trap.canDamagePlayer());
+//                    //                System.out.println("player lives: " + player.getNumLives());
+//                    player.setNumLives(player.getNumLives() - 0.5f);
+//                    float remainingLives = player.getNumLives() - 0.5f;
+//                    System.out.println("Number of remaining lives: " + remainingLives);
+//                }
+            }
             float trapWidth = trap.getBounds().width;
             float trapHeight = trap.getBounds().height;
 
-//            // Get the current frame from the trap's animation
-            TextureRegion currentFrame = trap.getCurrentFrame();
-//            System.out.println("the currentFrame for the game: " + currentFrame);
 
+            float animationFrames = game.getTrapAnimation().getKeyFrames().length;
+            float animationDuration = game.getTrapAnimation().getAnimationDuration();
+            float frameDuration = animationDuration / animationFrames;
 
-//
+//            int currentFrameIndex = (int) ((sinusInput % animationDuration) / frameDuration);
+
             game.getSpriteBatch().draw(game.getTrapAnimation().getKeyFrame(sinusInput, true), trap.getBounds().x, trap.getBounds().y, trapWidth, trapHeight);
         }
 
 
-        game.getSpriteBatch().end();
+        //draw chest
+        for (Chest chest : mapCreator.getChests()) {
 
 
-        game.getSpriteBatch().setProjectionMatrix(camera.combined);
+            player.preventOverlap(chest);
 
-//        player.getGame().getSpriteBatch().begin();
-        game.getSpriteBatch().begin();
-        sinusInput += delta;
+
+            // for collision detection
+
+
+            float chestWidth = chest.getBounds().width; // Adjust yourScalingFactor
+            float chestHeight = chest.getBounds().height; // Adjust yourScalingFactor
+
+
+            if (player.overlaps(chest)) {
+                System.out.println("called");
+                System.out.println("overlapping");
+
+                player.setKey(true);
+                chest.setChestOpen(true);
+                game.getSpriteBatch().draw(game.getChestAnimation().getKeyFrame(sinusInput, false), chest.getBounds().x, chest.getBounds().y, chestWidth, chestHeight);
+            }
+
+            if (!chest.isChestOpen()) {
+                game.getSpriteBatch().draw(chest.getTextureRegion(), chest.getBounds().x, chest.getBounds().y, chestWidth, chestHeight);
+            } else {
+                float animationDuration = game.getChestAnimation().getAnimationDuration();
+                TextureRegion lastFrame = game.getChestAnimation().getKeyFrame(animationDuration);
+                game.getSpriteBatch().draw(lastFrame, chest.getBounds().x, chest.getBounds().y, chestWidth, chestHeight);
+            }
+
+        }
+
+        //draw entryPoint
+
+        {
+            EntryPoint entry = mapCreator.getEntryPoint();
+            float entryWidth = entry.getBounds().width; // Adjust yourScalingFactor
+            float entryHeight = entry.getBounds().height; // Adjust yourScalingFactor
+
+            if (!entry.isDoorClosed()) {
+                if (!player.overlaps(entry)) {
+
+                    entry.setDoorClosed(true);
+
+                } else {
+                    game.getSpriteBatch().draw(game.getEntryPointAnimation().getKeyFrame(sinusInput, false),
+                            entry.getBounds().x, entry.getBounds().y, entryWidth, entryHeight);
+                }
+            } else {
+                float animationDuration = game.getEntryPointAnimation().getAnimationDuration();
+                TextureRegion lastFrame = game.getEntryPointAnimation().getKeyFrame(animationDuration);
+                game.getSpriteBatch().draw(lastFrame, entry.getBounds().x, entry.getBounds().y, entryWidth, entryHeight);
+            }
+
+
+            if (entry.isDoorClosed()) {
+                player.preventOverlap(entry);
+            }
+
+
+        }
+
+        // draw the exit
+        for (Exit exit : mapCreator.getExits()) {
+//            System.out.println("does player have the key: " + player.hasKey());
+
+            if (!player.hasKey()) {
+                player.preventOverlap(exit);
+            }
+
+
+            // for collision detection
+
+
+            float exitWidth = exit.getBounds().width; // Adjust yourScalingFactor
+            float exitHeight = exit.getBounds().height; // Adjust yourScalingFactor
+
+
+            if (player.overlaps(exit) && player.hasKey()) {
+                System.out.println("called");
+                System.out.println("overlapping");
+
+
+                exit.setExitOpen(true);
+                game.getSpriteBatch().draw(game.getExitAnimation().getKeyFrame(sinusInput, false), exit.getBounds().x,
+                        exit.getBounds().y, exitWidth, exitHeight);
+            }
+
+            if (!exit.isExitOpen()) {
+                game.getSpriteBatch().draw(exit.getTextureRegion(), exit.getBounds().x, exit.getBounds().y, exitWidth, exitHeight);
+            } else {
+                float animationDuration = game.getExitAnimation().getAnimationDuration();
+                TextureRegion lastFrame = game.getExitAnimation().getKeyFrame(animationDuration);
+                game.getSpriteBatch().draw(lastFrame, exit.getBounds().x, exit.getBounds().y, exitWidth, exitHeight);
+            }
+
+        }
+        // draw hud
+        hud.draw(player.getNumberOfLives());
+
+        // draw player
         player.update(delta, sinusInput);
-        if (Gdx.input.isKeyPressed(Input.Keys.UP)) {
-//            prevy = player.getPlayerY();
-            player.setFacingDirection(Direction.UP);
-        }
-        if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
-//            prevx = player.getPlayerX();
-            player.setFacingDirection(Direction.LEFT);
-        }
-        if (Gdx.input.isKeyPressed(Input.Keys.DOWN)) {
-//            prevy = player.getPlayerY();
-            player.setFacingDirection(Direction.DOWN);
-        }
-        if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
-//            prevx = player.getPlayerX();
-            player.setFacingDirection(Direction.RIGHT);
-        }
-//        player.getGame().getSpriteBatch().end();
-        game.getSpriteBatch().end();
-//        System.out.println("player values in player rendering: " + player.getPlayerX() + " " + player.getPlayerY() + " " + player.getWidth() + " " + player.getHeight());
+//        player.setColor(0,0,1,0);
 
+
+
+        game.getSpriteBatch().end();
 
         game.getSpriteBatch().begin();
         shapeRenderer.setProjectionMatrix(camera.combined);
@@ -218,18 +321,42 @@ public class GameScreen implements Screen {
         }
         shapeRenderer.end();
         game.getSpriteBatch().end();
-// --to delete---
-//        player.setBoundaryRectangle();
-// --end of to delete---
-        updateCamera();
+
+
+        handleAdditionalInput();
+
 
     }
+
+    private void handleInput() {
+        if (Gdx.input.isKeyPressed(Input.Keys.UP)) {
+            player.setFacingDirection(Direction.UP);
+        }
+        if (Gdx.input.isKeyPressed(Input.Keys.DOWN)) {
+            player.setFacingDirection(Direction.DOWN);
+        }
+        if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
+            player.setFacingDirection(Direction.LEFT);
+        }
+        if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
+            player.setFacingDirection(Direction.RIGHT);
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.A)) {
+            player.receiveDamage();
+        }
+    }
+
+    private void handleAdditionalInput() {
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+            game.goToMenu();
+        }
+    }
+
 
     @Override
     public void resize(int width, int height) {
         camera.setToOrtho(false);
         viewport.update(width, height, true);
-//        game.getSpriteBatch().setProjectionMatrix(camera.combined);
     }
 
 
@@ -261,13 +388,11 @@ public class GameScreen implements Screen {
 
 
         // Assuming playerX and playerY represent the player's position in the area squares
-        int areaSquareWidth = 18 * 18;  // Adjust according to your needs
-        int areaSquareHeight = 7 * 32;  // Adjust according to your needs
-
+        int areaSquareWidth = 6 * 5 * 16;
+        int areaSquareHeight = 6 * 5 * 16;
         // Calculate the player's square position
-        int playerSquareX = MathUtils.floor(player.getX() / areaSquareWidth);
-        int playerSquareY = MathUtils.floor(player.getY() / areaSquareHeight);
-
+        int playerSquareX = MathUtils.floor(player.getPlayerX() / areaSquareWidth);
+        int playerSquareY = MathUtils.floor(player.getPlayerY() / areaSquareHeight);
         // Update camera position based on player's square position
         float targetX = playerSquareX * areaSquareWidth + areaSquareWidth / 2f;
         float targetY = playerSquareY * areaSquareHeight + areaSquareHeight / 2f;
@@ -284,5 +409,7 @@ public class GameScreen implements Screen {
 
     }
 
-
+    public OrthographicCamera getCamera() {
+        return camera;
+    }
 }
